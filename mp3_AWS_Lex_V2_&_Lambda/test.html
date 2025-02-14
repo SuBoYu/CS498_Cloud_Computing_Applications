@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Amazon Lex V2 Chatbot - GraphDistanceBot</title>
+  <!-- Using AWS SDK for JavaScript -->
+  <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1192.0.min.js"></script>
+  <style>
+    input#wisdom {
+      padding: 4px;
+      font-size: 1em;
+      width: 400px;
+    }
+    input::placeholder {
+      color: #ccc;
+      font-style: italic;
+    }
+    p.userRequest {
+      margin: 4px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      min-width: 50%;
+      max-width: 85%;
+      float: left;
+      background-color: #7d7;
+    }
+    p.lexResponse {
+      margin: 4px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      text-align: right;
+      min-width: 50%;
+      max-width: 85%;
+      float: right;
+      background-color: #bbf;
+      font-style: italic;
+    }
+    p.lexError {
+      margin: 4px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      text-align: right;
+      min-width: 50%;
+      max-width: 85%;
+      float: right;
+      background-color: #f77;
+    }
+  </style>
+</head>
+<body>
+  <h1>Amazon Lex V2 - GraphDistanceBot</h1>
+  <p style="width: 400px">
+    This chatbot integrates with <a href="https://aws.amazon.com/lex/" target="_blank">Amazon Lex V2</a>.
+  </p>
+  <div id="conversation" style="width: 400px; height: 400px; border: 1px solid #ccc; background-color: #eee; padding: 4px; overflow-y: auto;"></div>
+  <form id="chatform" style="margin-top: 10px" onsubmit="return pushChat();">
+    <input type="text" id="wisdom" size="80" placeholder="I need a hotel room">
+  </form>
+
+  <script>
+    // Set focus on the input field
+    document.getElementById("wisdom").focus();
+
+    // Configure AWS region and Cognito credentials
+    AWS.config.region = 'us-east-1'; // Change to your bot's region
+    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+      IdentityPoolId: '' // Replace with your Identity Pool ID
+    });
+
+    // Initialize the AWS Lex Runtime V2 client
+    var lexruntimev2 = new AWS.LexRuntimeV2();
+    var lexUserId = 'chatbot-demo-' + Date.now();
+    var sessionId = lexUserId; // Using a unique session per user
+
+    // Lex V2 configuration parameters
+    const botId = "";    // Replace with your Lex Bot ID
+    const botAliasId = ""; // Replace with your Lex Bot Alias ID
+    const localeId = "en_US";       // Change if using a different locale
+
+    function pushChat() {
+      var wisdomText = document.getElementById('wisdom');
+
+      if (wisdomText && wisdomText.value && wisdomText.value.trim().length > 0) {
+        var userInput = wisdomText.value.trim();
+        wisdomText.value = '...'; // Provide feedback while processing
+
+        // Display the user request in the conversation window
+        showRequest(userInput);
+
+        // Prepare the Lex V2 request parameters
+        var params = {
+          botId: botId,
+          botAliasId: botAliasId,
+          localeId: localeId,
+          sessionId: sessionId,
+          text: userInput
+        };
+
+        // Call Lex V2 using the recognizeText API
+        lexruntimev2.recognizeText(params, function (err, data) {
+          if (err) {
+            console.error(err, err.stack);
+            showError('Error: ' + err.message + ' (see console for details)');
+          }
+          if (data) {
+            showResponse(data);
+          }
+
+          // Re-enable the input field for new input
+          wisdomText.value = '';
+        });
+      }
+      return false; // Prevent form submission
+    }
+
+    // Function to display the user's message
+    function showRequest(message) {
+      var conversationDiv = document.getElementById('conversation');
+      var messagePara = document.createElement("p");
+      messagePara.className = 'userRequest';
+      messagePara.appendChild(document.createTextNode(message));
+      conversationDiv.appendChild(messagePara);
+      conversationDiv.scrollTop = conversationDiv.scrollHeight;
+    }
+
+    // Function to display errors returned from Lex
+    function showError(errorMessage) {
+      var conversationDiv = document.getElementById('conversation');
+      var errorPara = document.createElement("p");
+      errorPara.className = 'lexError';
+      errorPara.appendChild(document.createTextNode(errorMessage));
+      conversationDiv.appendChild(errorPara);
+      conversationDiv.scrollTop = conversationDiv.scrollHeight;
+    }
+
+    // Function to display Lex's response; Lex V2 returns messages as an array
+    function showResponse(lexResponse) {
+      var conversationDiv = document.getElementById('conversation');
+      var responsePara = document.createElement("p");
+      responsePara.className = 'lexResponse';
+
+      if (lexResponse.messages && lexResponse.messages.length > 0) {
+        responsePara.appendChild(document.createTextNode(lexResponse.messages[0].content));
+      } else {
+        responsePara.appendChild(document.createTextNode("No response received."));
+      }
+
+      conversationDiv.appendChild(responsePara);
+      conversationDiv.scrollTop = conversationDiv.scrollHeight;
+    }
+  </script>
+</body>
+</html>
